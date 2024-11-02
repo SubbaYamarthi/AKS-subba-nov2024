@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-app
+  labels:
+    app: python-app
+spec:
+  replicas: 3  # Number of desired pods
+  selector:
+    matchLabels:
+      app: python-app
+  template:
+    metadata:
+      labels:
+        app: python-app
+    spec:
+      containers:
+      - name: python-app
+        image: your-docker-repo/python-app:latest  # Ensure this is a valid image
+        ports:
+        - containerPort: 80
+        env:
+        - name: NAME
+          value: "World"
+        - name: VAR_NAME
+          value: "some-value"  # Define VAR_NAME to avoid resolution issues
+        command: ["python", "app.py"]  # Entry point
+        args: ["--arg1", "$(VAR_NAME)"]  # Arguments to the entry point
+        # Optional: Define resource limits
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-app-service
+spec:
+  type: LoadBalancer  # Change to ClusterIP or NodePort based on your needs
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: python-app
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: python-app-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: python-app
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: allowed-app  # Change this to the label of pods allowed to connect
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: allowed-app  # Change this to the label of pods allowed to be accessed
